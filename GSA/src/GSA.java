@@ -4,28 +4,27 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 public class GSA {
-	int D = 4, N = 10;// 维度与粒子个数
+	int D = 4, N = 50;// 维度与粒子个数
 	double[][] x = new double[N][D];// 物体i在k维上的位置
 	double[] M = new double[N];// 物体i的质量
 	double[] m = new double[N];// 物体i的惯性质量
 	double[] fitness = new double[N];// 物体i的适应度
-	double best = 0, worst = 0, G = 0, G0 = 100, ga = 0, fa = 0;// 最优解与最差解
+	double best, worst, G = 0, G0 , ga = 0, fa ;// 最优解与最差解
 	double[][][] f = new double[N][N][D];// 物体j在k维上收到物体i的万有引力
 	double[][] F = new double[N][D];// 物体i在k维度上受到的万有引力总和
-	long T = 10000, t = 0;// 最大迭代次数
+	long T = 1000, t = 0;// 最大迭代次数
 	double[][] a = new double[N][D];// 物体i在k维度上获得的加速度
 	double[][] v = new double[N][D];// 物体i在k维度上的速度
 	ArrayList<Integer> kbest = new ArrayList<Integer>();
 	
 	/////////////////////////优化算法//////////////////////////////////////////
-	int L=0,dmax,dmin;//搜索空间的对角线长度;多样性阀值
-	double c1,c2,C1,C2;//四个学习因子
+	double c1,c2;//四个学习因子
 	double[] pworstg=new double[D];//种群历史最差位置
 	double[] pbestg=new double[D];//种群历史最好位置
 	double[][] pworsti=new double[N][D];//个体历史最差位置
 	double[][] pbesti=new double[N][D];//个体历史最好位置
 
-	public void gsa() throws IOException {
+	public double gsa() throws IOException {
 		File file=new File("D:/GSA_Status.txt");
 		if(!file.exists()){
 			file.createNewFile();
@@ -33,15 +32,14 @@ public class GSA {
 			file.delete();
 			file.createNewFile();
 		}
-		FileOutputStream fos=new FileOutputStream(file);
+//		FileOutputStream fos=new FileOutputStream(file);
 		StringBuffer sb=new StringBuffer();
 		double ob = 0;
 		initial();
-		while (kbest.size() > 1 && best < 1600) {
+		while (kbest.size() > 1 && best>0) {
 			sb.append("Time:"+t+"\r\n");
-			best = -1;
-			double diversity=diversity(L, x);//多样性度量值
-			worst = Double.MAX_VALUE;// 计算每个粒子的M
+			best = Double.MAX_VALUE;
+			worst = -1;
 			// 计算每个粒子的适应值，并规约在0~1之间；更新最优适应值与最差适应值；更新G;
 			G = G(G0, ga, T, t);
 			sb.append("G:"+G+"\r\n");
@@ -50,11 +48,11 @@ public class GSA {
 			for (int i = 0; i < N; i++) {
 				fitness[i] = fit(x[i]);
 				sb.append(fitness[i]+"\t");
-				pbestg=fitness[i]>best?x[i]:pbestg;
-				best = fitness[i] > best ? fitness[i] : best;
-				worstindex = fitness[i] <= worst ? i : worstindex;
-				pworstg=fitness[i]<=worst?x[i]:pworstg;
-				worst = fitness[i] <= worst ? fitness[i] : worst;
+				pbestg=fitness[i]<=best?x[i]:pbestg;
+				best = fitness[i] < best ? fitness[i] : best;
+				worstindex = fitness[i] >= worst ? i : worstindex;
+				pworstg=fitness[i]>=worst?x[i]:pworstg;
+				worst = fitness[i]>= worst ? fitness[i] : worst;
 			}
 			sb.append("\r\nbest:"+best+"worst:"+worst+"\r\n");
 			kbest.remove(Integer.valueOf(worstindex));
@@ -73,11 +71,8 @@ public class GSA {
 				M[i] = m[i] / msum;
 				sb.append(M[i]+"\r\n");
 			}
-			System.out.println("Time:" + t + "\tbest:" + best + "\tsize:"
-					+ kbest.size());
-			if (best <= 1) {
-				System.out.println("Best:" + best);
-			}
+//			System.out.println("Time:" + t + "\tbest:" + best + "\tsize:"
+//					+ kbest.size());
 			sb.append("\r\n");
 			StringBuffer fsb=new StringBuffer();
 			StringBuffer asb=new StringBuffer();
@@ -108,23 +103,10 @@ public class GSA {
 					asb.append(a[i][k]+"\t");
 					F[i][k] = fsum;
 					a[i][k] = F[i][k] == 0 ? 0 : F[i][k];
-					double dvalue=0;//多样性优化值
-//					if(diversity>=dmax){
-//						double[] temp1=new double[x[i].length];
-//						for(int l=0;l<temp1.length;l++){
-//							temp1[l]=pbesti[i][l]-x[i][l];
-//						}
-//						double[] temp2=new double[x[i].length];
-//						for(int l=0;l<temp2.length;l++){
-//							temp2[l]=pbestg[l]-x[i][l];
-//						}
-//						dvalue=c1*Math.random();
-//						
-//					}
+					double psovalue=0;//粒子个体记忆和种群记忆对GSA算法速度的优化
+					psovalue+=c1*Math.random()*(pbesti[i][k]-x[i][k])+c2*Math.random()*(pbestg[k]-x[i][k]);
 					// 更新每个粒子在不同维度上的位置
-					v[i][k] = Math.random() * v[i][k] + a[i][k];
-					v[i][k] = v[i][k] > 10 ? 10 : v[i][k];
-					v[i][k] = v[i][k] < -10 ? -10 : v[i][k];
+					v[i][k] = Math.random() * v[i][k] + a[i][k]+psovalue;
 					vsb.append(v[i][k]+"\t");
 					// System.out.println(i+"\t"+"\t"+k+"\t"+M[i]+"\t"+v[i][k]);
 					x[i][k] = x[i][k] + v[i][k];
@@ -133,8 +115,8 @@ public class GSA {
 					xsb.append(x[i][k]+"\r\n");
 					
 					//更新每个粒子自身的最好位置与最坏位置
-					pworsti[i]=fit(pworsti[i])<=fit(x[i])?pworsti[i]:x[i];
-					pbesti[i]=fit(pbesti[i])>fit(x[i])?pbesti[i]:x[i];
+					pworsti[i]=fit(pworsti[i])>=fit(x[i])?pworsti[i]:x[i];
+					pbesti[i]=fit(pbesti[i])<fit(x[i])?pbesti[i]:x[i];
 				}
 				fsb.append("\r\n");
 				asb.append("\r\n");
@@ -144,22 +126,22 @@ public class GSA {
 				sb.append(asb);
 				sb.append(vsb);
 				sb.append(xsb);
-				fos.write(sb.toString().getBytes());
+//				fos.write(sb.toString().getBytes());
 				sb=new StringBuffer();
 
 			}
 			t++;
 			sb.append("\r\n-********************************************************-\r\n");
-			fos.write(sb.toString().getBytes());
+//			fos.write(sb.toString().getBytes());
 			if (ob == best) {
-				System.out.println("Best:" + best + "\t ERROR!\tG:" + G);
+//				System.out.println("Best:" + best + "\t ERROR!\tG:" + G);
 				break;
 			} else {
 				ob = best;
 			}
 		}
-		fos.close();
-		System.out.println(best);
+//		fos.close();
+		return best;
 	}
 
 	private void initial() {
@@ -170,14 +152,19 @@ public class GSA {
 				v[i][j] = 0;
 				x[i][j] = x[i][j] > 20 ? 20 : x[i][j];
 				x[i][j] = x[i][j] < 0 ? 0 : x[i][j];
-				pworsti[i][i]=x[i][j];
+				pworsti[i][j]=x[i][j];
 				pbesti[i][j]=x[i][j];
 			}
 			m[i] = fit(x[i]);
 			kbest.add(i);
 		}
-		ga = 70;
+		ga = 20;
 		fa = 0;
+		G0=100;
+		c1=0.5;
+		c2=0.5;
+		best=Double.MAX_VALUE;
+		worst=-1;
 	}
 
 	private double fit(double[] x) {
@@ -231,31 +218,6 @@ public class GSA {
 
 	/**
 	 * 
-	 * @param F
-	 *            物体受到的万有引力总和
-	 * @param M
-	 *            物体的惯性质量
-	 * @return 当前时刻和维度下物体的加速度
-	 */
-	private double a(double F, double M) {
-		double result = F / M;
-		return result;
-	}
-
-	/**
-	 * 
-	 * @param v
-	 *            当前时间下物体的速度
-	 * @param a
-	 *            当前时间下物体的加速度
-	 * @param x
-	 *            当前时间下物体的位置
-	 */
-	private void updateXV(double v, double a, double x) {
-	}
-
-	/**
-	 * 
 	 * @param xi
 	 *            第一个物体的位置
 	 * @param xj
@@ -268,30 +230,6 @@ public class GSA {
 			result += (Math.pow((xi[i] - xj[i]), 2));
 		}
 		result = Math.sqrt(result);
-		return result;
-	}
-	
-	private double diversity(double L,double[][]x){
-		double result=0;
-		double[] ave=new double[x[0].length];
-		for(int i=0;i<x.length;i++){
-			for(int j=0;j<ave.length;j++){
-				ave[j]+=x[i][j];
-			}
-		}
-		for(int i=0;i<ave.length;i++){
-			ave[i]=ave[i]/ave.length;
-		}
-		result=1/(x.length*L);
-		double sum1=0.0,sum2=0.0;
-		for(int i=0;i<x.length;i++){
-			sum2=0.0;
-			for(int j=0;j<x[i].length;i++){
-				sum2+=(x[i][j]-ave[j]);
-			}
-			sum1+=Math.sqrt(sum2);
-		}
-		result=result*sum1;
 		return result;
 	}
 
