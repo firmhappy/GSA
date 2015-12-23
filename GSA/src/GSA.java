@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 public class GSA {
-	int D = 4, N = 50;// 维度与粒子个数
+	int D = 4, N = 5;// 维度与粒子个数
 	double[][] x = new double[N][D];// 物体i在k维上的位置
 	double[] M = new double[N];// 物体i的质量
 	double[] m = new double[N];// 物体i的惯性质量
@@ -32,7 +32,7 @@ public class GSA {
 			file.delete();
 			file.createNewFile();
 		}
-//		FileOutputStream fos=new FileOutputStream(file);
+		FileOutputStream fos=new FileOutputStream(file);
 		StringBuffer sb=new StringBuffer();
 		double ob = 0;
 		initial();
@@ -90,7 +90,7 @@ public class GSA {
 					vsb.append("\t"+i+"-"+k+"-v:");
 					xsb.append("\t"+i+"-"+k+"-x:");
 					for (int j = 0; j < N; j++) {
-						if (j == i || !kbest.contains(Integer.valueOf(j))) {
+						if (j == i ) {
 							continue;
 						}
 						double r = R(x[i], x[j]);
@@ -126,13 +126,13 @@ public class GSA {
 				sb.append(asb);
 				sb.append(vsb);
 				sb.append(xsb);
-//				fos.write(sb.toString().getBytes());
+				fos.write(sb.toString().getBytes());
 				sb=new StringBuffer();
 
 			}
 			t++;
 			sb.append("\r\n-********************************************************-\r\n");
-//			fos.write(sb.toString().getBytes());
+			fos.write(sb.toString().getBytes());
 			if (ob == best) {
 //				System.out.println("Best:" + best + "\t ERROR!\tG:" + G);
 				break;
@@ -167,10 +167,14 @@ public class GSA {
 		worst=-1;
 	}
 
-	private double fit(double[] x) {
+	public double fit(double[] x) {
 		double result = 0;
 		for (int i = 0; i < x.length; i++) {
-			result += x[i] * x[i];
+			double dxi=x[i]*x[i];
+			dxi=1-dxi;
+			//double temp=(Math.pow(x[i+1]-x[i], x.length)*100+Math.pow(dxi, 2));
+			double temp=x[i]*x[i];
+			result += temp;
 		}
 		return result;
 	}
